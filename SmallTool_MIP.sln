@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.32228.547
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmallTool_MIP", "SmallTool_MIP.csproj", "{84A6FAE6-A365-42E6-82BB-E56333260F8F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmallTool_MIP", "SmallTool_MIP.csproj", "{84A6FAE6-A365-42E6-82BB-E56333260F8F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
