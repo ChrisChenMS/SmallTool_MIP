@@ -6,6 +6,7 @@ namespace SmallTool_MIP.Models
 {
     public class MIP_TelemetryObject
     {
+        public string Process { get; set; }
         public string EventTime { get; set; }
         public string EventName { get; set; }
         public Dictionary<int, string> TelemetryList { get; set; }

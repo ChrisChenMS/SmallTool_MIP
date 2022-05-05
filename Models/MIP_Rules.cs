@@ -15,6 +15,7 @@ namespace SmallTool_MIP.Models
         // 5 all -> give a report
         // 6 None
 
+        public bool MIPLogOnly { get; set; }
         public int MIPMode { get; set; }
 
         public bool Bootstrap { get; set; }

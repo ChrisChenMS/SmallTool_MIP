@@ -49,13 +49,54 @@ namespace SmallTool_MIP
         }
 
         //try to complete the validated MIP folder path
-        public string LocationValidator(string Location)
+        public string LocationValidator(string Location, bool LogOnly)
         {
-            if (!File.Exists(Location))
+            if (!File.Exists(Location) & !Directory.Exists(Location))
             {
                 return "";
             }
-            return Location;
+
+            //check folder
+            if (!LogOnly)
+            {
+                try
+                {
+                    //check if miplog in logs folder
+                    if (!Directory.EnumerateFiles(Location, "*.miplog").Any())
+                    {
+                        //check if miplog in mip\logs folder
+                        if (!Directory.EnumerateFiles(Location + @"\logs\", "*.miplog").Any())
+                        {
+                            return "";
+                        }
+                        else
+                        {
+                            return (Location + @"\logs\");
+                        }
+                    }
+                    else
+                    {
+                        return Location;
+                    }
+                }
+                catch (Exception e)
+                {
+                    File.AppendAllText(Location, DateTime.Now.ToString() + e + "\n");
+                }
+            }
+            else
+            //check file
+            {
+                if (!File.Exists(Location))
+                {
+                    return "";
+                }
+                else
+                {
+                    return Location;
+                }
+            }
+            return "";
         }
 
         public string Serialize(Object input)
@@ -77,14 +118,6 @@ namespace SmallTool_MIP
                 return new MIP_Rules();
             }
         }
-
-        //public string XmlValidator(string Location)
-        //{
-        //    string content = File.ReadAllText(Location, Encoding.Unicode);
-        //    content = content.Replace("\x00", "[0x00]").Replace(@"\0", "");
-        //    content = "<WRAPPER>" + content + @"</WRAPPER>";
-        //    return content;
-        //}
 
         public void TxtLogger(string[] input)
         {
@@ -196,120 +229,9 @@ namespace SmallTool_MIP
             return false;
         }
 
-        public string SubstringString(string input, string KeyWord)
-        {
-            string output;
-
-            output = input.Substring(input.IndexOf(ColumnFilter[KeyWord]) + ColumnFilter[KeyWord].Length);
-
-            return output;
-        }
-
-        public List<List<string[]>> ListGroup(List<List<string[]>> input)
-        {
-            //List<List<string[]>> output = new List<List<string[]>>();
-            List<List<string[]>> tempoutput = new List<List<string[]>>();
-            List<string[]> temp = new List<string[]>();
-            if (input.Count > 0)
-            {
-                //output.Add(input[0]);
-                tempoutput.Add(input[0]);
-                foreach(var list in input.Skip(1).ToList())
-                {
-                    bool Found = false;
-                    foreach (var outlist in tempoutput)
-                    {
-                        if (list.Count == outlist.Count)
-                        {
-                            temp = new List<string[]>();
-                            foreach (string[] arr in outlist)
-                            {
-                                if (!list.Any(a => a.SequenceEqual(arr)))
-                                {
-                                    temp.Add(arr);
-                                }
-                            }
-                            if (temp.Count == 0)
-                            {
-                                Found = true;
-                            }
-                        }
-                    }
-                    if (!Found)
-                    {
-                        tempoutput.Add(list);
-                    }
-                }
-            }
-            return tempoutput;
-        }
-
-        //public bool IsMSIPCRequest(string input)
-        //{
-        //    //return input.StartsWith("Initializing an HTTP request with Win");
-        //    string KeyWord = ColumnFilter["MSIPC_Request"];
-        //    return IsFiltered(input, KeyWord);
-        //}
-
-        //public bool IsMSIPCReponse(string input)
-        //{
-        //    //return input.StartsWith("------ Sending Request done. HTTP Status code = ");
-        //    string KeyWord = ColumnFilter["MSIPC_Response"];
-        //    return IsFiltered(input, KeyWord);
-        //}
-
-        //public bool IsMSIPCCorrelation(string input)
-        //{
-        //    //return input.StartsWith("Correlation-Id/Request-Id:");
-        //    string KeyWord = ColumnFilter["MSIPC_Correlation"];
-        //    return IsFiltered(input, KeyWord);
-        //}
-
-        //public bool IsMSIPCBasicLog(string input)
-        //{
-        //    return IsMSIPCRequest(input) || IsMSIPCReponse(input) || IsMSIPCCorrelation(input);
-        //}
-
-        //public List<string> GetEmails(string input)
-        //{
-        //    List<string> output = new List<string>();
-
-        //    Regex emailRegex = new Regex(@"\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*", RegexOptions.IgnoreCase);
-        //    MatchCollection emailMatches = emailRegex.Matches(input);
-        //    foreach (Match emailMatch in emailMatches)
-        //    {
-        //        output.Add(emailMatch.Value);
-        //    }
-
-        //    return output;
-        //}
-
-
-        //get string between {}
-        //public List<string> GetIds(string input)
-        //{
-        //    List<string> output = new List<string>();
-
-        //    Regex CurlyBracesRegex = new Regex(@"{(.*?)}", RegexOptions.IgnoreCase);
-        //    Regex DoubleQuotesRegex = new Regex("\"([^\"]*)\"", RegexOptions.IgnoreCase);
-        //    MatchCollection IdMatches = CurlyBracesRegex.Matches(input);
-        //    if (IdMatches.Count == 0)
-        //    {
-        //        IdMatches = DoubleQuotesRegex.Matches(input);
-        //    }
-
-        //    foreach (Match IdMatch in IdMatches)
-        //    {
-        //        output.Add(IdMatch.Groups[1].Value);
-        //    }
-
-        //    return output;
-        //}
-
-        //get string between { }
+        //split log using Regex
         public string[] SplitLog(string item)
-        {
-            
+        {   
             List<string> list = new List<string>();
             string curr = null;
             foreach (Match match in LogSplit.Matches(item))
@@ -319,11 +241,11 @@ namespace SmallTool_MIP
                 {
                     list.Add("");
                 }
-
                 list.Add(curr.TrimStart(' '));
             }
-
             return list.ToArray();
         }
+
+
     }
 }

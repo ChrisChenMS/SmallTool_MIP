@@ -31,7 +31,7 @@ namespace SmallTool_MIP
             Rule = Handler.DeserializeRules(ProgramLocation);
 
             //initialize MIP location
-            BaseLocation = Handler.LocationValidator(Location);
+            BaseLocation = Handler.LocationValidator(Location, Rule.MIPLogOnly);
 
             if (BaseLocation.Length < 1)
             {
@@ -50,119 +50,156 @@ namespace SmallTool_MIP
 
             Handler.TxtLogger(Handler.Serialize(Rule));
 
-            //open file
-            string[] RawContent = File.ReadAllLines(BaseLocation).ToArray();
-            string LogFileName = BaseLocation;
-
-            Console.WriteLine("\n++++++++" + LogFileName + "++++++++");
-
-            //initially parse log
-
-            Dictionary<int, string> ParsedContent = ParseMIPLog(RawContent);
-            foreach (KeyValuePair<int, string> entry in ParsedContent)
+            List<string> MIPLogs = new List<string>();
+            if (!Rule.MIPLogOnly)
             {
-                if (Handler.IsFiltered(entry.Value, "MIP_Telemetry") | Handler.IsFiltered(entry.Value, "MIP_Audit")) //Filter telemetry info
-                {
-                    LogAnalyse(ParsedContent, entry.Key, entry.Value, telemetrylist, auditlist);
-                }
-                else
-                {
-                    String[] list = Handler.SplitLog(entry.Value);
+                MIPLogs = Directory.GetFiles(BaseLocation, "*.miplog").ToList();
+            }
+            else
+            {
+                MIPLogs.Add(BaseLocation);
+            }
 
-                    if (Handler.IsStart(list[0], "MIP_Error")) 
-                    {
-                        ErrorAnalyse(entry.Key, list, errorlist);
-                    }
-                    else if (Handler.IsStart(list[0], "MIP_Trace"))
-                    {
-                        if (Handler.IsStart(list[4].Trim(), "MIP_Label")) //filer label information
-                        {
-                            LabelAnalyse(list[4], labellist);
-                        }
-                        else if (Handler.IsStart(list[4].Trim(), "MIP_Co-auth"))
+            if (MIPLogs.Count() > 0)
+            {
 
+                foreach (string path in MIPLogs)
+                {
+                    //open file
+                    string[] RawContent = File.ReadAllLines(path).ToArray();
+                    string LogFileName = path;
+
+                    Console.WriteLine("\n++++++++" + LogFileName + "++++++++");
+
+                    //initially parse log
+
+                    Dictionary<int, string> ParsedContent = ParseMIPLog(RawContent);
+                    foreach (KeyValuePair<int, string> entry in ParsedContent)
+                    {
+                        if (Handler.IsFiltered(entry.Value, "MIP_Telemetry") | Handler.IsFiltered(entry.Value, "MIP_Audit")) //Filter telemetry info
                         {
-                            AppInfo.Coauth = list[4].Replace('"', ' ').Trim();
+                            LogAnalyse(ParsedContent, entry.Key, entry.Value, telemetrylist, auditlist);
                         }
                         else
                         {
-                            continue;//Bypass other trace
+                            String[] list = Handler.SplitLog(entry.Value);
+
+                            if (Handler.IsStart(list[0], "MIP_Error"))
+                            {
+                                ErrorAnalyse(entry.Key, list, errorlist);
+                            }
+                            else if (Handler.IsStart(list[0], "MIP_Trace"))
+                            {
+                                if (Handler.IsStart(list[4].Trim(), "MIP_Label")) //filer label information
+                                {
+                                    LabelAnalyse(list[4], labellist);
+                                }
+                                else if (Handler.IsStart(list[4].Trim(), "MIP_Co-auth"))
+
+                                {
+                                    AppInfo.Coauth = list[4].Replace('"', ' ').Trim();
+                                }
+                                else
+                                {
+                                    continue;//Bypass other trace
+                                }
+                            }
+                            else if (Handler.IsStart(list[0], "MIP_Info")) // For other Info module
+                            {
+                                if (Handler.IsStart(list[4].Trim(), "MIP_Co-auth"))
+                                {
+                                    AppInfo.Coauth = list[4].Replace('"', ' ').Trim();
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
                         }
                     }
-                    else if (Handler.IsStart(list[0], "MIP_Info")) // For other Info module
+
+                    //get app info from first telemetry data, if no telemetry, check audit
+                    Dictionary<int, string> AppData = new Dictionary<int, string>();
+
+                    if (telemetrylist.Count() > 0 | auditlist.Count() > 0)
                     {
-                        if (Handler.IsStart(list[4].Trim(), "MIP_Co-auth"))
+                        if (telemetrylist.Count() > 0)
                         {
-                            AppInfo.Coauth = list[4].Replace('"', ' ').Trim();
+                            AppData = telemetrylist[0].TelemetryList;
                         }
-                        else
+                        else if (auditlist.Count() > 0)
                         {
-                            continue;
+                            AppData = auditlist[0].TelemetryList;
+                        }
+
+                        foreach (KeyValuePair<int, string> entry in AppData)
+                        {
+
+                            int pTo = entry.Value.IndexOf(":");
+
+                            int sFrom = entry.Value.IndexOf("[");
+                            int sTo = entry.Value.IndexOf("]");
+
+                            switch (entry.Value.Substring(1, pTo - 1))
+                            {
+                                case "App.ApplicationId":
+                                    AppInfo.ApplicationId = entry.Value.Substring(sFrom, sTo - sFrom + 1);
+                                    break;
+
+                                case "App.ApplicationName":
+                                    AppInfo.ApplicationName = entry.Value.Substring(sFrom, sTo - sFrom + 1);
+                                    break;
+
+                                case "App.ApplicationVersion":
+                                    AppInfo.ApplicationVersion = entry.Value.Substring(sFrom, sTo - sFrom + 1);
+                                    break;
+
+                                case "MIP.Version":
+                                    AppInfo.MIPVersion = entry.Value.Substring(sFrom, sTo - sFrom + 1);
+                                    break;
+                            }
                         }
                     }
+                    else // no trace
+                    {
+                        continue;
+                    }
+
+                    // Analyze based on rules
+                    if (Rule.Bootstrap)
+                    {
+                        BootstrapAnalyse(AppInfo);
+                    }
+
+                    if (Rule.ErrorOnly)
+                    {
+                        ErrorInformation(errorlist);
+                    }
+
+                    if (Rule.Label)
+                    {
+                        LabelInformation(labellist);
+                    }
+
+                    if (Rule.Trace == "verbose")
+                    {
+                        TelemetryInformation(telemetrylist, "telemetry");
+                        TelemetryInformation(AuditInformation(auditlist), "audit");
+                    }
+                    if (Rule.Trace == "simple")
+                    {
+                        SimpleTelemetryInformation(telemetrylist, "telemetry");
+                        SimpleTelemetryInformation(AuditInformation(auditlist), "audit");
+                    }
+                    
                 }
-            }
-
-            //get app info from first telemetry data
-            foreach (KeyValuePair<int, string> entry in telemetrylist[0].TelemetryList)
-            {
-
-                int pTo = entry.Value.IndexOf(":");
-
-                int sFrom = entry.Value.IndexOf("[");
-                int sTo = entry.Value.IndexOf("]");
-
-                switch (entry.Value.Substring(1, pTo - 1))
-                {
-                    case "App.ApplicationId":
-                        AppInfo.ApplicationId = entry.Value.Substring(sFrom, sTo - sFrom + 1);
-                        break;
-
-                    case "App.ApplicationName":
-                        AppInfo.ApplicationName = entry.Value.Substring(sFrom, sTo - sFrom + 1);
-                        break;
-
-                    case "App.ApplicationVersion":
-                        AppInfo.ApplicationVersion = entry.Value.Substring(sFrom, sTo - sFrom + 1);
-                        break;
-
-                    case "MIP.Version":
-                        AppInfo.MIPVersion = entry.Value.Substring(sFrom, sTo - sFrom + 1);
-                        break;
-                }
-            }
-
-            // Analyze based on rules
-            if (Rule.Bootstrap)
-            {
-                BootstrapAnalyse(AppInfo);
-            }
-
-            if (Rule.ErrorOnly)
-            {
-                ErrorInformation(errorlist);
-            }
-
-            if (Rule.Label)
-            {
-                LabelInformation(labellist);
-            }
-
-            if (Rule.Trace == "verbose")
-            {
-                TelemetryInformation(telemetrylist, "telemetry");
-                TelemetryInformation(AuditInformation(auditlist), "audit");
-            }
-            if (Rule.Trace == "simple")
-            {
-                SimpleTelemetryInformation(telemetrylist, "telemetry");
-                SimpleTelemetryInformation(AuditInformation(auditlist), "audit");
             }
             return result;
         }
 
         private Dictionary<int, string> ParseMIPLog(string[] RawContent)
         {
+            // Add line number to log file
             Dictionary<int, string> ParsedContent = new Dictionary<int, string>();
 
             foreach (var Item in RawContent.Select((value, i) => (value, i)))
@@ -178,6 +215,8 @@ namespace SmallTool_MIP
             }
             return ParsedContent;
         }
+
+
 
         private void LabelAnalyse(string content, List<MIP_LabelObject> labellist)
         {
@@ -196,13 +235,16 @@ namespace SmallTool_MIP
             MIP_TelemetryObject telemetryobject = new MIP_TelemetryObject();
             MIP_TelemetryObject auditobject = new MIP_TelemetryObject();
 
-            //get event name
-
-            string eventname = content.Split('[', ']')[1];
-            string eventtime = content.Split('\t')[1];
-
             //get telemetry message
+            String[] list=Handler.SplitLog(content);
+
+            //split first line to get time, process
             Dictionary<int, string> telemetry = new Dictionary<int, string>();
+            string eventtime = list[1];
+            string process = list[3];
+            string eventname = list[4].Split('[', ']')[1];
+
+            // get event details
             int i = index + 1;
 
             while (raw[i].StartsWith("\t"))
@@ -215,6 +257,7 @@ namespace SmallTool_MIP
             {
                 auditobject.EventTime = eventtime;
                 auditobject.EventName = eventname;
+                auditobject.Process = process;
                 auditobject.TelemetryList = telemetry;
                 auditlist.Add(auditobject);
             }
@@ -222,6 +265,7 @@ namespace SmallTool_MIP
             {
                 telemetryobject.EventTime = eventtime;
                 telemetryobject.EventName = eventname;
+                telemetryobject.Process = process;
                 telemetryobject.TelemetryList = telemetry;
                 telemetrylist.Add(telemetryobject);
             }
@@ -242,17 +286,6 @@ namespace SmallTool_MIP
             errorlist.Add(data);
         }
 
-        // private List<string[]> GroupInformation(List<string[]> input)
-        // {
-        //     List<string[]> output = new List<string[]>();
-
-        //     foreach (string[] item in input)
-        //     {
-
-        //     }
-
-        //     return output;
-        // }
 
         private void BootstrapAnalyse(MIP_AppObject AppInfo)
         {
@@ -308,11 +341,12 @@ namespace SmallTool_MIP
                         if (pFrom >= 0 & pTo > 0)
                         {
                             String result = St.Substring(pFrom, pTo - pFrom + 1);
-                            Erroroutput.Add("Error line: " + error.Line + "\n" + "Error time: " + error.Date + "\n" + result);
+                            
+                            Erroroutput.Add("Error line: " + error.Line + "\n" + "Error time: " + error.Date + "\n" + "Process name: " + error.Process + "\n" + result);
                         }
                         else
                         {
-                            Erroroutput.Add("Error line: " + error.Line + "\n" + "Error time: " + error.Date + "\n" + St);
+                            Erroroutput.Add("Error line: " + error.Line + "\n" + "Error time: " + error.Date + "\n" + "Process name: " + error.Process + "\n"+ St);
                         }
                     }
                 }
@@ -341,34 +375,52 @@ namespace SmallTool_MIP
                 Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
             }
 
-            var distincttelemetry = telemetrylist.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
-            Console.WriteLine("The number of event: " + distincttelemetry.Count());
+            //var distincttelemetry = telemetrylist.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
+            //Console.WriteLine("The number of event: " + distincttelemetry.Count());
+            var grouptelemetry = telemetrylist.GroupBy(x => x.Process);// get distinct telemetrylist by eventname
+            
 
             //Output
-            foreach (MIP_TelemetryObject telemetry in distincttelemetry)
+            foreach (var singletelemetry in grouptelemetry) 
             {
-                var table = new ConsoleTable("Info", "Value");
-                table.AddRow("Event name: ", telemetry.EventName);
-                table.AddRow("Event Time: ", telemetry.EventTime);
-                table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
-                string output = new string("");
-                foreach (KeyValuePair<int, string> item in telemetry.TelemetryList)
+                var distincttelemetry = singletelemetry.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
+                Console.WriteLine( "The number of event: " + distincttelemetry.Count() +"\n");
+
+                int count = 1; //counter of event
+
+                foreach (MIP_TelemetryObject telemetry in distincttelemetry)
                 {
-                    // Display line number and message
-                    Console.WriteLine(item.Key.ToString() + item.Value);
+                    
+                    Console.WriteLine("\n++++++++NO. {0}++++++++", count);
+                    var table = new ConsoleTable("Info", "Value");
+                    table.AddRow("Event name: ", telemetry.EventName.Trim());
+                    table.AddRow("Event Time: ", telemetry.EventTime.Trim());
+                    table.AddRow("Process: ", telemetry.Process.Trim());
+                    table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
+
+                    string output = new string("");
+                    foreach (KeyValuePair<int, string> item in telemetry.TelemetryList)
+                    {
+                        // Display line number and message
+                        Console.WriteLine(item.Key.ToString() + item.Value);
+                    }
+                    //table.AddRow("Event Info: ", output);
+                    Console.WriteLine("\n++++++++NO. {0}++++++++",count);
+                    Console.WriteLine("");
+
+                    count++;
                 }
-                //table.AddRow("Event Info: ", output);
+                if (category == "telemetry")
+                {
+                    Console.WriteLine("\n++++++++{0}++++++++", "Telemetry Information");
+                }
+                else
+                {
+                    Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
+                }
                 Console.WriteLine("");
             }
-            if (category == "telemetry")
-            {
-                Console.WriteLine("\n++++++++{0}++++++++", "Telemetry Information");
-            }
-            else
-            {
-                Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
-            }
-            Console.WriteLine("");
+            
         }
         private void SimpleTelemetryInformation(List<MIP_TelemetryObject> telemetrylist, string category)
         {
@@ -381,47 +433,56 @@ namespace SmallTool_MIP
                 Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
             }
 
-            var distincttelemetry = telemetrylist.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
-            Console.WriteLine("The number of event: " + distincttelemetry.Count());
+            //Output
 
+            //var distincttelemetry = telemetrylist.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
+            //Console.WriteLine("The number of event: " + distincttelemetry.Count());
 
-            foreach (MIP_TelemetryObject telemetry in distincttelemetry)
+            var grouptelemetry = telemetrylist.GroupBy(x => x.Process); // Group by process name
+
+            foreach (var singletelemetry in grouptelemetry)
             {
-                MIP_TelemetryObject filteredTelemetry = TelemetryFilter(telemetry); //Fliter simple telemetry info
-
-                if (filteredTelemetry.TelemetryList.Count() > 3)
+                var distincttelemetry = singletelemetry.GroupBy(x => x.EventName).Select(y => y.First());// get distinct telemetrylist by eventname
+                Console.WriteLine("The number of event: " + distincttelemetry.Count());
+                foreach (MIP_TelemetryObject telemetry in distincttelemetry)
                 {
-                    var table = new ConsoleTable("Line","Info", "Value");
-                    table.AddRow("","Event name: ", filteredTelemetry.EventName);
-                    table.AddRow("","Event Time: ", filteredTelemetry.EventTime);
-                    //table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
+                    MIP_TelemetryObject filteredTelemetry = TelemetryFilter(telemetry); //Fliter simple telemetry info
 
-                    string output = new string("");
-                    foreach (KeyValuePair<int, string> item in filteredTelemetry.TelemetryList)
+                    if (filteredTelemetry.TelemetryList.Count() > 3)
                     {
-                        //Console.WriteLine(item.Substring(0, item.LastIndexOf(',')));
-                        string keyPair = item.Value.Substring(0, item.Value.LastIndexOf(",")); //split key and vaule by colon to write to table
-                        var value = keyPair.Trim().Split(new[] { ':' }, 2);
-                        table.AddRow(item.Key, value[0], value[1]);
+                        var table = new ConsoleTable("Line", "Info", "Value");
+                        table.AddRow("", "Event name: ", filteredTelemetry.EventName);
+                        table.AddRow("", "Event Time: ", filteredTelemetry.EventTime.Trim());
+                        table.AddRow("", "Process: ", telemetry.Process.Trim());
+                        //table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
+
+                        string output = new string("");
+                        foreach (KeyValuePair<int, string> item in filteredTelemetry.TelemetryList)
+                        {
+                            //Console.WriteLine(item.Substring(0, item.LastIndexOf(',')));
+                            string keyPair = item.Value.Substring(0, item.Value.LastIndexOf(",")); //split key and vaule by colon to write to table
+                            var value = keyPair.Trim().Split(new[] { ':' }, 2);
+                            table.AddRow(item.Key, value[0], value[1]);
+                        }
+                        table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
                     }
-                    table.Configure(o => o.NumberAlignment = Alignment.Right).Write(Format.Alternative);
-                }
-                else
-                {
-                    continue;
-                }
-                //table.AddRow("Event Info: ", output);
-                if (category == "telemetry")
-                {
-                    Console.WriteLine("\n++++++++{0}++++++++", "Telemetry Information");
-                }
-                else
-                {
-                    Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
+                    else
+                    {
+                        continue;
+                    }
+                    //table.AddRow("Event Info: ", output);
+                    if (category == "telemetry")
+                    {
+                        Console.WriteLine("\n++++++++{0}++++++++", "Telemetry Information");
+                    }
+                    else
+                    {
+                        Console.WriteLine("\n++++++++{0}++++++++", "Audit Information");
+                    }
+                    Console.WriteLine("");
                 }
                 Console.WriteLine("");
             }
-            Console.WriteLine("");
         }
 
         private MIP_TelemetryObject TelemetryFilter(MIP_TelemetryObject input)
@@ -460,7 +521,6 @@ namespace SmallTool_MIP
             {
                 outTeleList.Add(i,input.TelemetryList[i]);
             }
-
             output.EventTime = input.EventTime;
             output.EventName = input.EventName;
             output.TelemetryList = outTeleList;
