@@ -61,22 +61,20 @@ namespace SmallTool_MIP
             {
                 try
                 {
-                    //check if miplog in logs folder
+                    //check mip\logs folder
+                    if (Directory.Exists(Location + @"\logs\"))
+                    {
+                        Location += @"\logs\";
+                    }
+
+                    //check logs folder
                     if (!Directory.EnumerateFiles(Location, "*.miplog").Any())
                     {
-                        //check if miplog in mip\logs folder
-                        if (!Directory.EnumerateFiles(Location + @"\logs\", "*.miplog").Any())
-                        {
-                            return "";
-                        }
-                        else
-                        {
-                            return (Location + @"\logs\");
-                        }
+                        return "";
                     }
                     else
                     {
-                        return Location;
+                        return (Location);
                     }
                 }
                 catch (Exception e)
