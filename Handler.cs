@@ -10,6 +10,8 @@ using System.Data.SQLite;
 using System.Data;
 
 
+
+
 namespace SmallTool_MIP
 {
     class Handler
@@ -198,34 +200,35 @@ namespace SmallTool_MIP
             return input.Contains(ColumnFilter[KeyWord]);
         }
 
+        public bool EventFilter(string input, string KeyWord)
+        {
+            return ColumnFilter[KeyWord].Contains(input);
+        }
+
+        public bool IsFilteredArray(string input, string KeyWord)
+        {
+            bool flag = false;
+            string[] keywords=ColumnFilter[KeyWord].Split(','); ;
+            foreach(string keyword in keywords)
+            {
+                if (input.Contains(keyword))
+                {
+                    flag = true;
+                }
+            }
+            return flag;
+        }
+
         public bool IsStart(string input, string KeyWord)
         {
             return input.StartsWith(ColumnFilter[KeyWord]);
         }
 
-        public bool IsFiltered(string input, string[] KeyWord)
+        public bool IsEqual(string input, string KeyWord)
         {
-            foreach (string word in KeyWord)
-            {
-                if (IsFiltered(input, word))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return (input==ColumnFilter[KeyWord]);
         }
 
-        public bool Contains(string input, string[] KeyWord)
-        { 
-            foreach (string word in KeyWord)
-            {
-                if (input.Contains(word))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
 
         //split log using Regex
         public string[] SplitLog(string item)
@@ -242,6 +245,74 @@ namespace SmallTool_MIP
                 list.Add(curr.TrimStart(' '));
             }
             return list.ToArray();
+        }
+        public Dictionary<int, string> ParseMIPLog(string[] RawContent)
+        {
+            // Add line number to log file
+            Dictionary<int, string> ParsedContent = new Dictionary<int, string>();
+
+            foreach (var Item in RawContent.Select((value, i) => (value, i)))
+            {
+                string Line = Item.value;
+                int Index = Item.i + 1;
+                if (Line.Length > 0)
+                {
+                    //string[] LineInfo = { Index.ToString(), Line };
+                    ParsedContent.Add(Index, Line);
+                }
+            }
+            return ParsedContent;
+        }
+        public Dictionary<int, string> TimeFilter(Dictionary<int, string> ParsedContent, DateTime start, DateTime end)
+        {
+            Dictionary<int, string> output = new Dictionary<int, string>();
+            DateTime current = new DateTime();
+            foreach (KeyValuePair<int, string> entry in ParsedContent)
+            {
+                String[] list = SplitLog(entry.Value);
+                if (list.Length > 1) //Try get time from every single line
+                {
+                    string timeString = list[1].Trim();
+
+                    DateTime result;
+                    if (DateTime.TryParse(timeString, out result)) //try update current time
+                    {
+                        current = result;
+                    }
+                }
+
+                if (start <= current && current <= end)
+                {
+                    output.Add(entry.Key, entry.Value);
+                }
+            }
+            return output;
+        }
+
+        public Dictionary<int, string> ConnectionFilter(MIP_TelemetryObject inputTelemetry)
+        {
+            Dictionary<int,string> output = new Dictionary<int, string>();
+
+            foreach (KeyValuePair<int, string> item in inputTelemetry.TelemetryList)
+            {
+                if (IsFilteredArray(item.Value, "MIP_RequestFilter"))
+                {
+                    output.Add(item.Key,item.Value) ;
+                }
+            }
+                return output;
+        }
+
+        public bool TelemetryHealthy(MIP_TelemetryObject input)
+        {
+            foreach (KeyValuePair<int, string> item in input.TelemetryList) // scan error related information
+            {
+                if (IsFiltered(item.Value, "MIP_TelemetryError_1") || IsFiltered(item.Value, "MIP_TelemetryError_2"))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
 
