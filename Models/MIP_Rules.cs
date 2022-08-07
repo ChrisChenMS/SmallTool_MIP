@@ -8,12 +8,11 @@ namespace SmallTool_MIP.Models
     {
         // MIPMode 
         // 0 Invalid
-        // 1 ErrorOnly
-        // 2 Label & Policy
-        // 3 trace : simple
-        // 4 trace : verbose
+        // 1 Bootstrap
+        // 2 Error
+        // 3 Label
+        // 4 Trace
         // 5 all -> give a report
-        // 6 None
 
         public bool MIPLogOnly { get; set; }
         public int MIPMode { get; set; }
