@@ -95,14 +95,14 @@ This module focused on useful telemetry and event traces. It will display the nu
 
   ![image-20220814170213495](./Image/telemetry.png)
 
-  - This tool also has the feature to show some simple but useful events. Users could get related information from log files via the line number.
-    ![image-20220814170213495](./Image/simple.png)
+ - This tool also has the feature to show some simple but useful events. Users could get related information from log files via the line number.
+   ![image-20220814170213495](./Image/simple.png)
     
-  - For Audit information, we skip the Heartbeat and Discover operation and display all detailed information for other operations since they could be informative. One example of the Change operation:
+ - For Audit information, we skip the Heartbeat and Discover operation and display all detailed information for other operations since they could be informative. One example of the Change operation:
   
-    ![image-20220814170213495](./Image/audit.png)
+   ![image-20220814170213495](./Image/Audit.png)
   
-    This will show the label/protection information before and after. This could be great for us to know about the behavior since some time we could not have access to customer's confidential files or the issue could not be reproduced.
+   This will show the label/protection information before and after. This could be great for us to know about the behavior since some time we could not have access to customer's confidential files or the issue could not be reproduced.
 
 ## Contributing
 
