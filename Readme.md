@@ -28,23 +28,23 @@ This tool also uses **rules.json** file to define the requirements. **For MIP lo
 
  - MIPMode：
 
-   1. Bootstrap
+   1: Bootstrap
 
       This mode displays the basic bootstrap information.
 
-   2. ErrorOnly
+   2: ErrorOnly
 
       This mode will focus on the error message in miplog files.
 
-   3. Label
+   3: Label
 
       This mode gives the output of the label and template information of the tenant.
 
-   4. Trace
+   4: Trace
 
       This mode will filter out the useful telemetry and audit information from the log file which is useful for troubleshooting.
 
-   5. All
+   5: All
 
       This mode generates a report including bootstrap information, error message, label and template information, and filtered useful trace.
    
