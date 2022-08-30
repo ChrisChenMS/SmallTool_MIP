@@ -55,7 +55,7 @@ This tool also uses **rules.json** file to define the requirements. **For MIP lo
   false: Input the **mip** folder path. It's under the path of MIP\ \<App name>.EXE.
   
 
-Input the time range you want to filter the log:
+Input the time range you want to filter the log. It could be date or time:
 
 ![bootstrap](./Image/TimeRange.png)
 
