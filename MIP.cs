@@ -77,11 +77,11 @@ namespace SmallTool_MIP
                     Dictionary<int, string> ParsedContent = Handler.ParseMIPLog(RawContent);
 
                     //get time range from input
-                    Console.WriteLine("Input the Time Range. Format yyyy-MM-dd HH:mm:ss");
+                    Console.WriteLine("Input the Time Range. Format yyyy-MM-dd or yyyy-MM-dd HH:mm:ss");
                     DateTime start = new DateTime();
                     while (true)
                     {
-                        Console.WriteLine("Start Time(yyyy-MM-dd HH:mm:ss):");
+                        Console.WriteLine("Start Time:");
                         var startInput = Console.ReadLine();
                         DateTime startResult;
                         if (!DateTime.TryParse(startInput, out startResult))
@@ -96,7 +96,7 @@ namespace SmallTool_MIP
                         }
                     }
 
-                    Console.WriteLine("End Time(yyyy-MM-dd HH:mm:ss):");
+                    Console.WriteLine("End Time:");
                     DateTime end = DateTime.Now;
                     while (true)
                     {
