@@ -55,7 +55,7 @@ This tool also uses **rules.json** file to define the requirements. **For MIP lo
   false: Input the **mip** folder path. It's under the path of MIP\ \<App name>.EXE.
   
 
-Input the time range you want to filter the log. It could be **date** or **time**. Please notice if we input date, the time range will be "date 12:00:00 AM":
+Input the time range you want to filter the log. It could be **date** or **time**. Please notice if you input date, the time will be "date 12:00:00 AM":
 
 ![bootstrap](./Image/TimeRange.png)
 
@@ -91,19 +91,19 @@ This module focused on useful telemetry and event traces. It will display the nu
   
   ![image-20220814170213495](./Image/connection.png)
   
-- **Detailed Telemetry: **Based on our experience, we have filtered out some useful telemetries to display verbose information. 
+- **Detailed Telemetry:** Based on our experience, we have filtered out some useful telemetries to display verbose information. 
 
   For example, this telemetry focus on the protection removal activity:
 
   ![image-20220814170213495](./Image/telemetry.png)
   
-  - **Useful Trace Table: **This tool also has the feature to show some simple but useful events. We filtered the 
+  - **Useful Trace Table:** This tool also has the feature to show some simple but useful events. We filtered the 
     Users could get related information from log files via the line number.
     ![image-20220814170213495](./Image/simple.png)
     
-  - For Audit information, we skip the Heartbeat and Discover operation and display all detailed information for other operations since they could be informative. One example of the Change operation:
+  - For **Audit information**, we skip the Heartbeat and Discover operation and display all detailed information for other operations since they could be informative. One example of the Change operation:
   
-    ![image-20220814170213495](./Image/audit.png)
+    ![image-20220814170213495](./Image/Audit.png)
   
     This will show the label/protection information before and after. This could be great for us to know about the behavior since some time we could not have access to customer's confidential files or the issue could not be reproduced.
 
